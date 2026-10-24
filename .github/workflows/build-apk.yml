@@ -18,8 +18,16 @@ jobs:
           java-version: '17'
       - name: Install Android SDK packages
         run: |
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          sdkmanager --install 'platforms;android-34' 'build-tools;34.0.0'
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android command-line tools were not found under $SDK_ROOT"
+            find /usr/local/lib/android /opt -type f -name sdkmanager -print 2>/dev/null | head -20
+            exit 1
+          fi
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          "$SDKMANAGER" --install 'platforms;android-34' 'build-tools;34.0.0'
       - name: Build APK
         run: ./gradlew --no-daemon assembleDebug
       - name: Upload APK
